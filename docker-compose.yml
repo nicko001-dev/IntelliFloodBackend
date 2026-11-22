@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: intelliflood
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-intelliflood}
+      POSTGRES_DB: intelliflood
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intelliflood"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://intelliflood:${POSTGRES_PASSWORD:-intelliflood}@db:5432/intelliflood
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # Broker MQTT optionnel :  docker compose --profile mqtt up
+  mosquitto:
+    image: eclipse-mosquitto:2
+    profiles: ["mqtt"]
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    ports:
+      - "1883:1883"
+
+volumes:
+  pgdata:
